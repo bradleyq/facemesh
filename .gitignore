@@ -1,0 +1,6 @@
+processed_faces
+face_renders
+raw_faces
+.ipynb_checkpoints
+basel_face_model
+*pycache*
