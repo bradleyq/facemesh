@@ -94,7 +94,7 @@ def run(batchsize = 25, rate = 0.01, epochs = 50, lr_decay = 1.0, lr_stride = 1)
     ### define model ###
     model = resnet.resnet18(output_size=trainset.outputdim)
     model.to(device)
-    optimizer = optim.SGD(model.parameters(), lr=rate)
+    optimizer = optim.SGD(model.parameters(), lr=rate, momentum=0.95)
 
     criterion = nn.MSELoss()
 
