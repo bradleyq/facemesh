@@ -101,15 +101,61 @@ class Bottleneck(nn.Module):
 
         return out
 
+class ResNeXtBottleneck(nn.Module):
+    expansion = 1
+
+    def __init__(self, in_channels, out_channels, stride=1, downsample=None, norm_layer=None, cardinality=32, base_width=4, widen_factor=1):
+        """ Constructor
+        Args:
+            in_channels: input channel dimensionality
+            out_channels: output channel dimensionality
+            stride: conv stride. Replaces pooling layer.
+            cardinality: num of convolution groups.
+            base_width: base number of channels in each group.
+            widen_factor: factor to reduce the input dimensionality before convolution.
+        """
+        super(ResNeXtBottleneck, self).__init__()
+        if norm_layer is None:
+            norm_layer = nn.BatchNorm2d
+
+        width_ratio = out_channels / (widen_factor * 64.)
+        D = cardinality * int(base_width * width_ratio)
+        self.conv_reduce = nn.Conv2d(in_channels, D, kernel_size=1, stride=1, padding=0, bias=False)
+        self.bn_reduce = norm_layer(D)
+        self.conv_conv = nn.Conv2d(D, D, kernel_size=3, stride=stride, padding=1, groups=cardinality, bias=False)
+        self.bn = norm_layer(D)
+        self.conv_expand = nn.Conv2d(D, out_channels, kernel_size=1, stride=1, padding=0, bias=False)
+        self.bn_expand = norm_layer(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+
+        self.shortcut = nn.Sequential()
+        if in_channels != out_channels:
+            self.shortcut.add_module('shortcut_conv',
+                                     nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, padding=0,
+                                               bias=False))
+            self.shortcut.add_module('shortcut_bn', norm_layer(out_channels))
+
+    def forward(self, x):
+        bottleneck = self.conv_reduce.forward(x)
+        bottleneck = self.relu(self.bn_reduce.forward(bottleneck))
+        bottleneck = self.conv_conv.forward(bottleneck)
+        bottleneck = self.relu(self.bn.forward(bottleneck))
+        bottleneck = self.conv_expand.forward(bottleneck)
+        bottleneck = self.bn_expand.forward(bottleneck)
+        residual = self.shortcut.forward(x)
+        return self.relu(residual + bottleneck)
+
+
+
 
 class ResNet(nn.Module):
 
-    def __init__(self, block, layers, widths=[64, 128, 256, 512], output_size=1000, zero_init_residual=False, norm_layer=None):
+    def __init__(self, block, layers, widths=[64, 128, 256, 512], output_size=1000, zero_init_residual=False, norm_layer=None, init_stride=2):
         super(ResNet, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         self.inplanes = widths[0]
-        self.conv1 = nn.Conv2d(3, widths[0], kernel_size=7, stride=2, padding=3,
+        self.conv1 = nn.Conv2d(3, widths[0], kernel_size=7, stride=init_stride, padding=3,
                                bias=False)
         self.bn1 = norm_layer(widths[0])
         self.relu = nn.ReLU(inplace=True)

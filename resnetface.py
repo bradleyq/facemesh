@@ -42,7 +42,7 @@ class FaceDataset(torch.utils.data.Dataset):
             return self.count - self.trainn
 
     def __getitem__(self, idx):
-        if not train:
+        if not self.train:
             idx += self.trainn
         y = self.labels[idx]
         x = plt.imread(self.image_prefix + str(idx + 1) + self.image_suffix)
@@ -163,6 +163,7 @@ def run(batchsize = 25, rate = 0.01, epochs = 50, lr_decay = 1.0, lr_stride = 1)
         plt.xlabel("epoch")
         plt.ylabel("test_losses")
         plt.show()
+        model.eval()
 
     ### Begin Training ###
     train(model, optimizer, criterion, epochs, trainloader, testloader)
